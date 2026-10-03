@@ -1,0 +1,80 @@
+name: Firmware CI
+
+# Compiles the Aurora firmware in BOTH build variants so the feature flag can
+# never silently rot:
+#   wifi     → AURORA_ENABLE_WIFI=1 (default; Wi-Fi + web UI compiled in)
+#   ble-only → AURORA_ENABLE_WIFI=0 (network subsystem fully compiled out)
+# Plus a fast web-UI lint (JS syntax + no-CDN check) for data/.
+
+on:
+  push:
+    branches: [main]
+    paths: ["firmware/**", "scripts/**", ".github/workflows/firmware.yml"]
+  pull_request:
+    paths: ["firmware/**", "scripts/**", ".github/workflows/firmware.yml"]
+  workflow_dispatch:
+
+jobs:
+  web-ui:
+    name: Web UI lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node scripts/check-webui.js
+
+  compile:
+    name: Compile (${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: wifi
+            extra_flags: ""
+          - variant: ble-only
+            extra_flags: '-D AURORA_ENABLE_WIFI=0'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Cache ESP32 core + toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/arduino15
+          key: arduino15-esp32-3.3.10-${{ runner.os }}
+
+      - name: Install ESP32 core 3.3.10 + ArduinoJson 7.4.3
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls \
+            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.10
+          arduino-cli lib install ArduinoJson@7.4.3
+
+      - name: Compile
+        run: |
+          EXTRA=""
+          if [ -n "${{ matrix.extra_flags }}" ]; then
+            EXTRA="--build-property=build.extra_flags=${{ matrix.extra_flags }}"
+          fi
+          # FlashSize=16M is REQUIRED with PartitionScheme=default_8MB:
+          # the image header must claim >=8MB or the ROM rejects the
+          # partition table ("exceeds flash chip size") and bootloops.
+          arduino-cli compile \
+            --fqbn "esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=default_8MB" \
+            $EXTRA \
+            --export-binaries \
+            firmware/aurora
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-${{ matrix.variant }}
+          path: firmware/aurora/build/**/*.bin
+          if-no-files-found: error
+          retention-days: 14
