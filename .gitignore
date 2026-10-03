@@ -1,0 +1,32 @@
+# ---- General ----
+*.log
+*.iml
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ---- Android / Gradle ----
+.gradle/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# ---- Arduino / ESP32 build output ----
+# arduino-cli uses a temp dir by default; if you compile in-tree:
+build/
+*.elf
+*.bin
+*.map
+*.partitions
+*.bootloader.*
+
+# ---- Never commit local secrets ----
+# (repo credentials live OUTSIDE this repo entirely)
+.env
