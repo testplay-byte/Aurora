@@ -58,16 +58,19 @@ jobs:
 
       - name: Compile
         run: |
-          EXTRA=""
+          # Array (not a string) so flags with spaces stay ONE argv entry —
+          # a plain $EXTRA word-split the -D flag and arduino-cli died with
+          # "accepts at most 1 arg(s), received 2".
+          EXTRA=()
           if [ -n "${{ matrix.extra_flags }}" ]; then
-            EXTRA="--build-property=build.extra_flags=${{ matrix.extra_flags }}"
+            EXTRA+=(--build-property "build.extra_flags=${{ matrix.extra_flags }}")
           fi
           # FlashSize=16M is REQUIRED with PartitionScheme=default_8MB:
           # the image header must claim >=8MB or the ROM rejects the
           # partition table ("exceeds flash chip size") and bootloops.
           arduino-cli compile \
             --fqbn "esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=default_8MB" \
-            $EXTRA \
+            "${EXTRA[@]}" \
             --export-binaries \
             firmware/aurora
 
