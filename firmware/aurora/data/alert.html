@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — Live alerts</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">short-circuit alert feed</div>
+    <div class="state" id="live">listening…</div>
+  </header>
+
+  <div class="card">
+    <h2>Latest events</h2>
+    <div id="feed"><div class="empty">no events yet — the box is healthy ✅</div></div>
+    <p class="hint">Auto-refreshes every 5 s. v1 waited on a WebSocket the firmware
+       never served — this page polls <code>/api/data</code> instead, so it works.</p>
+  </div>
+
+  <div class="btn-row">
+    <a class="btn ghost" href="/history.html">🕑 Full history</a>
+    <a class="back" href="/">← dashboard</a>
+  </div>
+
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(async function poll() {
+  try {
+    const events = await App.get("/api/data");
+    const feed = document.getElementById("feed");
+    if (!Array.isArray(events) || events.length === 0) {
+      feed.innerHTML = '<div class="empty">no events yet — the box is healthy ✅</div>';
+    } else {
+      const latest = events.slice(-6).reverse();
+      feed.innerHTML = latest.map((e) => `
+        <div class="feed-item">
+          <div>
+            <div>⚡ short circuit</div>
+            <div class="when">${e.date || "?"} ${e.time || "?"} (${e.timezone || ""})</div>
+          </div>
+          <div class="dur">${Number(e.duration || 0).toFixed(2)} s</div>
+        </div>`).join("");
+    }
+    document.getElementById("live").textContent =
+      `last update ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    document.getElementById("live").textContent = "device unreachable — retrying";
+    document.getElementById("live").style.color = "var(--danger)";
+  }
+  setTimeout(poll, 5000);
+})();
+</script>
+</body>
+</html>

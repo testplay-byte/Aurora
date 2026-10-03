@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — WAVE</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">wave settings</div>
+    <div class="state" id="state">loading…</div>
+  </header>
+
+  <div class="card">
+    <h2>Timing</h2>
+    <div class="row">
+      <div><div class="label">Step interval</div><div class="sub">ms per sine step (10–200) · pattern: diagonal</div></div>
+      <input type="range" id="interval" min="10" max="200" step="5" value="50">
+      <div class="value" id="intervalV">50</div>
+    </div>
+    <p class="hint">Two diagonal corner groups (TL+BR vs TR+BL) fade against each
+       other. At each dark trough a group picks a new palette color.</p>
+  </div>
+
+  <div class="card">
+    <h2>Palette (max 8, min 2)</h2>
+    <div class="palette" id="pal"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="save">💾 SAVE</button>
+    <button class="btn ghost" id="run">▶ RUN</button>
+  </div>
+
+  <div style="margin-top:12px"><a class="back" href="/mode.html">← mode settings</a></div>
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  const MODE = 3;
+  let cfg = null, pal = null;
+
+  const $i = document.getElementById("interval");
+  $i.addEventListener("input", () => { document.getElementById("intervalV").textContent = $i.value; });
+
+  function collect() {
+    return {
+      name: "WAVE",
+      interval: +$i.value,
+      pattern: (cfg && cfg.pattern) || "diagonal",
+      colors: pal.get(),
+    };
+  }
+
+  document.getElementById("save").addEventListener("click", async () => {
+    try { await App.patchSettings({ ["MODE_" + MODE]: collect() }); App.toast("WAVE settings saved ✓"); }
+    catch (e) { App.toast(String(e.message || e), false); }
+  });
+  document.getElementById("run").addEventListener("click", async () => {
+    try {
+      await App.patchSettings({ ["MODE_" + MODE]: collect() });
+      await App.post("/api/mode", { mode: MODE });
+      App.toast("WAVE running");
+    } catch (e) { App.toast(String(e.message || e), false); }
+  });
+
+  (async () => {
+    try {
+      const s = await App.loadSettings();
+      cfg = s["MODE_" + MODE] || {};
+      $i.value = cfg.interval ?? 50;
+      document.getElementById("intervalV").textContent = $i.value;
+      pal = App.palette({
+        mount: document.getElementById("pal"),
+        colors: cfg.colors || [[255,0,0],[0,255,0],[0,0,255],[255,255,0]],
+        max: 8,
+        onChange: () => {},
+      });
+      document.getElementById("state").textContent = "editing WAVE (mode 3)";
+    } catch (e) {
+      document.getElementById("state").textContent = "device unreachable";
+      document.getElementById("state").style.color = "var(--danger)";
+    }
+  })();
+})();
+</script>
+</body>
+</html>

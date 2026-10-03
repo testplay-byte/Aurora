@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — SOLID</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">solid · 4-corner colors</div>
+    <div class="state" id="state">loading…</div>
+  </header>
+
+  <div class="card">
+    <h2>Corners</h2>
+    <div id="corners" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+    <p class="hint">Opens the native color picker — drag for a live preview on the box.
+       SOLID mode activates automatically when this page opens.</p>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="save">💾 SAVE</button>
+    <button class="btn ghost" id="allsame">Make all the same</button>
+  </div>
+
+  <div style="margin-top:12px"><a class="back" href="/mode.html">← mode settings</a></div>
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  const LABELS = ["Top Left", "Top Right", "Bottom Left", "Bottom Right"];
+  const state = document.getElementById("state");
+  const inputs = [];
+  const timers = [];
+  let sending = 0;
+
+  function build() {
+    const mount = document.getElementById("corners");
+    LABELS.forEach((label, i) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.style.marginBottom = "0";
+      card.innerHTML = `<h2>${label}</h2>
+        <input type="color" class="corner-color" value="#ff0000" data-i="${i}">
+        <div class="value" id="rgb${i}" style="text-align:left;margin-top:6px"></div>`;
+      mount.appendChild(card);
+
+      const inp = card.querySelector("input");
+      inputs.push(inp);
+      inp.addEventListener("input", () => {
+        const [r, g, b] = App.hex2rgb(inp.value);
+        document.getElementById("rgb" + i).textContent = `${r}, ${g}, ${b}`;
+        // debounce per-corner (100 ms) so drags don't flood the ESP
+        clearTimeout(timers[i]);
+        timers[i] = setTimeout(() => {
+          sending++;
+          App.post("/api/solid/led", { corner: i, r, g, b })
+            .catch((e) => App.toast(String(e.message || e), false))
+            .finally(() => sending--);
+        }, 100);
+      });
+    });
+  }
+
+  function fill(colors) {
+    colors.forEach((c, i) => {
+      if (!inputs[i]) return;
+      inputs[i].value = App.rgb2hex(c[0], c[1], c[2]);
+      document.getElementById("rgb" + i).textContent = `${c[0]}, ${c[1]}, ${c[2]}`;
+    });
+  }
+
+  document.getElementById("save").addEventListener("click", async () => {
+    try {
+      await App.post("/api/solid/save");
+      App.toast("Corner colors saved ✓");
+    } catch (e) { App.toast(String(e.message || e), false); }
+  });
+
+  document.getElementById("allsame").addEventListener("click", () => {
+    const first = inputs[0].value;
+    inputs.forEach((inp, i) => {
+      inp.value = first;
+      inp.dispatchEvent(new Event("input"));
+    });
+    App.toast("All corners set to the first color");
+  });
+
+  (async () => {
+    build();
+    try {
+      const s = await App.loadSettings();
+      fill((s.MODE_1 && s.MODE_1.colors) || [[255,0,0],[255,255,0],[255,192,203],[0,0,255]]);
+      await App.post("/api/mode", { mode: 1 });   // show what you edit
+      state.textContent = "SOLID active · edits preview live";
+    } catch (e) {
+      state.textContent = "device unreachable";
+      state.style.color = "var(--danger)";
+    }
+  })();
+})();
+</script>
+</body>
+</html>

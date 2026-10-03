@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — TRAIL</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">trail settings</div>
+    <div class="state" id="state">loading…</div>
+  </header>
+
+  <div class="card">
+    <h2>Motion</h2>
+    <div class="row">
+      <div><div class="label">Lap speed</div><div class="sub">ms per lap around the corners (100–5000)</div></div>
+      <input type="range" id="speed" min="100" max="5000" step="100" value="1000">
+      <div class="value" id="speedV">1000</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Trail length</div><div class="sub">segments, fading 0.6× each (1–4)</div></div>
+      <input type="range" id="length" min="1" max="4" step="1" value="3">
+      <div class="value" id="lengthV">3</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Brightness</div><div class="sub">0–100 %</div></div>
+      <input type="range" id="brightness" min="0" max="100" step="1" value="100">
+      <div class="value" id="brightnessV">100</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Forward</div><div class="sub">off = counter-clockwise</div></div>
+      <label class="toggle"><input type="checkbox" id="dir" checked><span class="track"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Palette</h2>
+    <div class="palette" id="pal"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="save">💾 SAVE</button>
+    <button class="btn ghost" id="run">▶ RUN</button>
+  </div>
+
+  <div style="margin-top:12px"><a class="back" href="/mode.html">← mode settings</a></div>
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  const MODE = 5;
+  let cfg = null, pal = null;
+
+  const link = (id, vid) => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", () => { document.getElementById(vid).textContent = el.value; });
+  };
+  link("speed", "speedV"); link("length", "lengthV"); link("brightness", "brightnessV");
+
+  function collect() {
+    return {
+      name: "TRAIL",
+      speed: +document.getElementById("speed").value,
+      direction: document.getElementById("dir").checked,
+      trail_length: +document.getElementById("length").value,
+      brightness: +document.getElementById("brightness").value,
+      colors: pal.get(),
+    };
+  }
+
+  document.getElementById("save").addEventListener("click", async () => {
+    try { await App.patchSettings({ ["MODE_" + MODE]: collect() }); App.toast("TRAIL settings saved ✓"); }
+    catch (e) { App.toast(String(e.message || e), false); }
+  });
+  document.getElementById("run").addEventListener("click", async () => {
+    try {
+      await App.patchSettings({ ["MODE_" + MODE]: collect() });
+      await App.post("/api/mode", { mode: MODE });
+      App.toast("TRAIL running");
+    } catch (e) { App.toast(String(e.message || e), false); }
+  });
+
+  (async () => {
+    try {
+      const s = await App.loadSettings();
+      cfg = s["MODE_" + MODE] || {};
+      const set = (id, v, d) => {
+        document.getElementById(id).value = v ?? d;
+        document.getElementById(id + "V").textContent = document.getElementById(id).value;
+      };
+      set("speed", cfg.speed, 1000);
+      set("length", cfg.trail_length, 3);
+      set("brightness", cfg.brightness, 100);
+      document.getElementById("dir").checked = cfg.direction !== false;
+      pal = App.palette({
+        mount: document.getElementById("pal"),
+        colors: cfg.colors || [[0,255,0]],
+        max: 8,
+        onChange: () => {},
+      });
+      document.getElementById("state").textContent = "editing TRAIL (mode 5)";
+    } catch (e) {
+      document.getElementById("state").textContent = "device unreachable";
+      document.getElementById("state").style.color = "var(--danger)";
+    }
+  })();
+})();
+</script>
+</body>
+</html>

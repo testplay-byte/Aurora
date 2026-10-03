@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — Short history</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">short-circuit history</div>
+    <div class="state" id="clock">--:--:--</div>
+  </header>
+
+  <div class="card">
+    <h2>Logged events</h2>
+    <div class="chips" id="chips">
+      <button class="chip on" data-h="0">ALL</button>
+      <button class="chip" data-h="6">6 h</button>
+      <button class="chip" data-h="12">12 h</button>
+      <button class="chip" data-h="24">24 h</button>
+    </div>
+    <table id="tbl">
+      <thead><tr><th>Time</th><th>Date</th><th>Duration</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>no events in this range</div>
+    <p class="hint">Written by the firmware each time a short clears.
+       Times follow the device clock (NTP once Wi-Fi is up).</p>
+  </div>
+
+  <div class="btn-row">
+    <a class="btn ghost" href="/alert.html">⚡ Live feed</a>
+    <a class="back" href="/">← dashboard</a>
+  </div>
+
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  let all = [];
+  let rangeHours = 0;   // 0 = show everything
+
+  // live clock
+  setInterval(() => {
+    document.getElementById("clock").textContent = new Date().toLocaleTimeString();
+  }, 1000);
+
+  function render() {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const rows = all
+      .filter((e) => rangeHours === 0 || (nowSec - (+e.unix || 0)) <= rangeHours * 3600)
+      .sort((a, b) => (+b.unix || 0) - (+a.unix || 0));
+
+    const tbody = document.querySelector("#tbl tbody");
+    tbody.innerHTML = rows
+      .map((e) => `<tr><td>${e.time || "?"}</td><td>${e.date || "?"}</td>
+                   <td>${Number(e.duration || 0).toFixed(2)} s</td></tr>`)
+      .join("");
+    document.getElementById("empty").hidden = rows.length > 0;
+    document.getElementById("tbl").style.display = rows.length ? "" : "none";
+  }
+
+  // range chips — REAL filtering (v1 only restyled the rows)
+  document.getElementById("chips").addEventListener("click", (ev) => {
+    const b = ev.target.closest(".chip");
+    if (!b) return;
+    document.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    rangeHours = +b.dataset.h;
+    render();
+  });
+
+  (async function load() {
+    try {
+      all = (await App.get("/api/data")) || [];
+    } catch (e) {
+      all = [];
+    }
+    render();
+  })();
+})();
+</script>
+</body>
+</html>

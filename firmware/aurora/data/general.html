@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — General</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">general settings</div>
+    <div class="state" id="state">loading…</div>
+  </header>
+
+  <!-- LED protection -->
+  <div class="card">
+    <h2>LED protection</h2>
+    <div class="row">
+      <div><div class="label">Red limit</div><div class="sub">cap the red channel (heat / power)</div></div>
+      <label class="toggle"><input type="checkbox" id="rl_on"><span class="track"></span></label>
+    </div>
+    <div class="row">
+      <div><div class="label">Limit value</div><div class="sub">0 = red off · 255 = uncapped</div></div>
+      <input type="range" id="rl_val" min="0" max="255" step="1" value="255">
+      <div class="value" id="rl_valV">255</div>
+    </div>
+  </div>
+
+  <!-- Schedule -->
+  <div class="card">
+    <h2>Auto on / off</h2>
+    <div class="row">
+      <div><div class="label">Turn on at</div><div class="sub">restores the last active mode</div></div>
+      <input type="time" id="on_time" value="18:00">
+      <label class="toggle"><input type="checkbox" id="on_en"><span class="track"></span></label>
+    </div>
+    <div class="row">
+      <div><div class="label">Turn off at</div><div class="sub">goes to OFF</div></div>
+      <input type="time" id="off_time" value="23:00">
+      <label class="toggle"><input type="checkbox" id="off_en"><span class="track"></span></label>
+    </div>
+    <p class="hint">Needs Wi-Fi: schedules run off NTP time, so they idle until the
+       device has synced once.</p>
+  </div>
+
+  <!-- Short detection -->
+  <div class="card">
+    <h2>Short-circuit alert</h2>
+    <div class="row">
+      <div><div class="label">Blink count</div><div class="sub">alert blinks after a short (1–10)</div></div>
+      <input type="range" id="sh_count" min="1" max="10" step="1" value="3">
+      <div class="value" id="sh_countV">3</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Blink speed</div><div class="sub">ms per blink (50–500)</div></div>
+      <input type="range" id="sh_speed" min="50" max="500" step="10" value="200">
+      <div class="value" id="sh_speedV">200</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Alert brightness</div><div class="sub">red alert level (50–255)</div></div>
+      <input type="range" id="sh_bright" min="50" max="255" step="5" value="128">
+      <div class="value" id="sh_brightV">128</div>
+    </div>
+  </div>
+
+  <!-- Wi-Fi -->
+  <div class="card">
+    <h2>Wi-Fi</h2>
+    <div class="row">
+      <div><div class="label">Primary network</div><div class="sub">SSID</div></div>
+      <input type="text" id="ssid1" placeholder="network name" autocomplete="off">
+    </div>
+    <div class="row">
+      <div><div class="label">&nbsp;</div><div class="sub">password</div></div>
+      <input type="password" id="pass1" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="row">
+      <div><div class="label">Scan</div><div class="sub">tap a result to fill the primary SSID</div></div>
+      <button class="btn small" id="scan">🔍 Scan</button>
+    </div>
+    <div id="scanList" style="display:none"></div>
+    <div class="row">
+      <div><div class="label">Fallback network</div><div class="sub">secondary SSID</div></div>
+      <input type="text" id="ssid2" placeholder="optional" autocomplete="off">
+    </div>
+    <div class="row">
+      <div><div class="label">&nbsp;</div><div class="sub">password</div></div>
+      <input type="password" id="pass2" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="row">
+      <div><div class="label">Access point</div><div class="sub">fallback hotspot SSID</div></div>
+      <input type="text" id="ap_ssid" placeholder="Aurora-LED">
+    </div>
+    <div class="row">
+      <div><div class="label">&nbsp;</div><div class="sub">AP password (≥ 8 chars)</div></div>
+      <input type="password" id="ap_pass" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="row">
+      <div><div class="label">Auto-reconnect</div><div class="sub">rejoin the network after drops</div></div>
+      <label class="toggle"><input type="checkbox" id="wifi_ar" checked><span class="track"></span></label>
+    </div>
+    <p class="hint">Changes apply on this page save. AP URL: <b>http://10.10.10.10</b> ·
+       mDNS: <b>http://aurora.local</b></p>
+  </div>
+
+  <!-- System -->
+  <div class="card">
+    <h2>System</h2>
+    <div class="row">
+      <div><div class="label">Restore mode after power loss</div><div class="sub">resume the last running mode on boot</div></div>
+      <label class="toggle"><input type="checkbox" id="sys_restore" checked><span class="track"></span></label>
+    </div>
+    <div class="row">
+      <div><div class="label">Debug logging</div><div class="sub">verbose serial output</div></div>
+      <label class="toggle"><input type="checkbox" id="sys_debug"><span class="track"></span></label>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="save">💾 SAVE ALL</button>
+    <button class="btn danger" id="reset">↺ RESET (keeps Wi-Fi)</button>
+  </div>
+
+  <div style="margin-top:12px"><a class="back" href="/">← dashboard</a></div>
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  // Non-network defaults used by RESET (v1's RESET blanked the Wi-Fi fields
+  // and a following SAVE persisted empty credentials — fixed here).
+  const NON_NETWORK_DEFAULTS = {
+    red_limit_enabled: false, red_limit_value: 255,
+    auto_turn_on_enabled: false, auto_turn_on_time: "18:00",
+    auto_turn_off_enabled: false, auto_turn_off_time: "23:00",
+    short_blink_count: 3, short_blink_speed: 200, short_alert_brightness: 128,
+    wifi_auto_reconnect: true, save_mode_on_power_loss: true, debug_logging: false,
+  };
+
+  const ids = ["rl_on","rl_val","on_time","on_en","off_time","off_en",
+               "sh_count","sh_speed","sh_bright","ssid1","pass1","ssid2","pass2",
+               "ap_ssid","ap_pass","wifi_ar","sys_restore","sys_debug"];
+  const el = (id) => document.getElementById(id);
+
+  function fill(g) {
+    el("rl_on").checked = !!g.red_limit_enabled;
+    el("rl_val").value = g.red_limit_value ?? 255;
+    el("on_time").value = g.auto_turn_on_time || "18:00";
+    el("on_en").checked = !!g.auto_turn_on_enabled;
+    el("off_time").value = g.auto_turn_off_time || "23:00";
+    el("off_en").checked = !!g.auto_turn_off_enabled;
+    el("sh_count").value = g.short_blink_count ?? 3;
+    el("sh_speed").value = g.short_blink_speed ?? 200;
+    el("sh_bright").value = g.short_alert_brightness ?? 128;
+    el("ssid1").value = g.wifi_ssid || "";
+    el("pass1").value = g.wifi_password || "";
+    el("ssid2").value = g.wifi_ssid2 || "";
+    el("pass2").value = g.wifi_password2 || "";
+    el("ap_ssid").value = g.ap_ssid || "";
+    el("ap_pass").value = g.ap_password || "";
+    el("wifi_ar").checked = g.wifi_auto_reconnect !== false;
+    el("sys_restore").checked = g.save_mode_on_power_loss !== false;
+    el("sys_debug").checked = !!g.debug_logging;
+    ["rl_val","sh_count","sh_speed","sh_bright"].forEach(syncV);
+  }
+
+  function syncV(id) { document.getElementById(id + "V").textContent = el(id).value; }
+
+  function collect() {
+    const apPass = el("ap_pass").value;
+    if (apPass && apPass.length > 0 && apPass.length < 8) {
+      App.toast("AP password needs 8+ characters", false);
+      return null;
+    }
+    return {
+      red_limit_enabled: el("rl_on").checked,
+      red_limit_value: +el("rl_val").value,
+      auto_turn_on_enabled: el("on_en").checked,
+      auto_turn_on_time: el("on_time").value,
+      auto_turn_off_enabled: el("off_en").checked,
+      auto_turn_off_time: el("off_time").value,
+      short_blink_count: +el("sh_count").value,
+      short_blink_speed: +el("sh_speed").value,
+      short_alert_brightness: +el("sh_bright").value,
+      wifi_ssid: el("ssid1").value.trim(),
+      wifi_password: el("pass1").value,
+      wifi_ssid2: el("ssid2").value.trim(),
+      wifi_password2: el("pass2").value,
+      ap_ssid: el("ap_ssid").value.trim() || "Aurora-LED",
+      ap_password: apPass,
+      wifi_auto_reconnect: el("wifi_ar").checked,
+      save_mode_on_power_loss: el("sys_restore").checked,
+      debug_logging: el("sys_debug").checked,
+    };
+  }
+
+  async function save() {
+    const data = collect();
+    if (!data) return;
+    try {
+      await App.patchSettings({ GENERAL: data });
+      App.toast("Settings saved ✓ (network changes apply on next Wi-Fi reconnect)");
+    } catch (e) { App.toast(String(e.message || e), false); }
+  }
+
+  document.getElementById("save").addEventListener("click", save);
+
+  // RESET: restores NON-network defaults immediately — network fields untouched
+  document.getElementById("reset").addEventListener("click", async () => {
+    try {
+      await App.patchSettings({ GENERAL: NON_NETWORK_DEFAULTS });
+      fill(Object.assign({}, NON_NETWORK_DEFAULTS, {
+        wifi_ssid: el("ssid1").value, wifi_password: el("pass1").value,
+        wifi_ssid2: el("ssid2").value, wifi_password2: el("pass2").value,
+        ap_ssid: el("ap_ssid").value, ap_password: el("ap_pass").value,
+      }));
+      App.toast("Defaults restored — Wi-Fi settings kept");
+    } catch (e) { App.toast(String(e.message || e), false); }
+  });
+
+  // sliders show live values
+  ["rl_val","sh_count","sh_speed","sh_bright"].forEach((id) =>
+    el(id).addEventListener("input", () => syncV(id)));
+
+  // Wi-Fi scan → tap a network to fill the primary SSID
+  document.getElementById("scan").addEventListener("click", async () => {
+    const box = document.getElementById("scanList");
+    box.style.display = "block";
+    box.innerHTML = '<div class="empty">scanning…</div>';
+    try {
+      const nets = await App.get("/api/wifi/scan");
+      if (!nets.length) { box.innerHTML = '<div class="empty">no networks found</div>'; return; }
+      box.innerHTML = nets
+        .sort((a, b) => b.rssi - a.rssi)
+        .map((n) => `<button class="btn ghost small" data-ssid="${n.ssid.replace(/"/g, "&quot;")}"
+            style="width:100%;justify-content:space-between;margin-top:6px">
+            <span>${n.secure ? "🔒" : "🔓"} ${n.ssid}</span><span>${n.rssi} dBm</span></button>`)
+        .join("");
+      box.querySelectorAll("button").forEach((b) =>
+        b.addEventListener("click", () => { el("ssid1").value = b.dataset.ssid; App.toast("SSID filled — set the password & save"); }));
+    } catch (e) {
+      box.innerHTML = `<div class="empty">scan failed: ${e.message}</div>`;
+    }
+  });
+
+  (async () => {
+    try {
+      const s = await App.loadSettings();
+      fill(s.GENERAL || {});
+      const m = await App.get("/api/mode");
+      document.getElementById("state").textContent = `connected · mode ${m.mode} ${m.name}`;
+    } catch (e) {
+      document.getElementById("state").textContent = "device unreachable";
+      document.getElementById("state").style.color = "var(--danger)";
+    }
+  })();
+})();
+</script>
+</body>
+</html>

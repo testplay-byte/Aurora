@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — LED Controller</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">Next-Level LED Wave Controller</div>
+    <div class="state" id="state">connecting…</div>
+  </header>
+
+  <!-- STOP: also the secret-gate target (10 fast clicks → hidden menu) -->
+  <button class="btn stop" id="stop">■ STOP</button>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Effects</h2>
+    <div class="grid" id="grid">
+      <button class="mode-btn" data-mode="1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
+        SOLID
+      </button>
+      <button class="mode-btn" data-mode="2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
+        BLINK
+      </button>
+      <button class="mode-btn" data-mode="3">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2.5-6 5-6 7.5 0s5 6 7.5 0 4-4.5 5-2"/></svg>
+        WAVE
+      </button>
+      <button class="mode-btn" data-mode="4">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.5" opacity="0.55"/></svg>
+        GLOW
+      </button>
+      <button class="mode-btn" data-mode="5">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2.4"/><circle cx="12" cy="12" r="3.4" opacity="0.7"/><circle cx="19.5" cy="12" r="4.4" opacity="0.4"/></svg>
+        TRAIL
+      </button>
+      <button class="mode-btn" data-mode="6">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7a5 5 0 1 0 5 5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
+        SPIRAL
+      </button>
+    </div>
+  </div>
+
+  <footer>Aurora • ESP32-S3 • v2.0 — <a href="/mode.html">mode settings</a></footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  const state = document.getElementById("state");
+  const stop = document.getElementById("stop");
+  let current = -1;
+
+  function highlight() {
+    document.querySelectorAll(".mode-btn").forEach((b) =>
+      b.classList.toggle("active", +b.dataset.mode === current));
+    state.textContent = current === 0 ? "OFF" : `mode ${current} · ${names[current] || ""}`;
+  }
+  const names = { 0: "OFF", 1: "SOLID", 2: "BLINK", 3: "WAVE", 4: "GLOW", 5: "TRAIL", 6: "SPIRAL" };
+
+  async function refresh() {
+    try {
+      const m = await App.get("/api/mode");
+      current = m.mode;
+      highlight();
+    } catch (e) {
+      state.textContent = "offline?";
+      state.style.color = "var(--danger)";
+    }
+  }
+
+  async function setMode(m) {
+    try {
+      await App.post("/api/mode", { mode: m });
+      current = m;
+      highlight();
+      App.toast(`${names[m]} running`);
+    } catch (e) {
+      App.toast(String(e.message || e), false);
+    }
+  }
+
+  stop.addEventListener("click", () => setMode(0));
+  document.querySelectorAll(".mode-btn").forEach((b) =>
+    b.addEventListener("click", () => setMode(+b.dataset.mode)));
+
+  // hidden menu: 10 clicks on STOP within sliding 2 s windows
+  App.secretGate(stop, "/secret.html");
+
+  refresh();
+  setInterval(refresh, 5000);   // stay in sync with BLE/app changes
+})();
+</script>
+</body>
+</html>

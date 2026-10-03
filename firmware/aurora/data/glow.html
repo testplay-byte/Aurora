@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — GLOW</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">glow settings</div>
+    <div class="state" id="state">loading…</div>
+  </header>
+
+  <div class="card">
+    <h2>Effect</h2>
+    <div class="row">
+      <div><div class="label">Step interval</div><div class="sub">ms per brightness step (5–150)</div></div>
+      <input type="range" id="interval" min="5" max="150" step="5" value="30">
+      <div class="value" id="intervalV">30</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Breathing</div><div class="sub">sine in/out instead of constant brightness</div></div>
+      <label class="toggle"><input type="checkbox" id="breathing" checked><span class="track"></span></label>
+    </div>
+    <div class="row">
+      <div><div class="label">Smooth transitions</div><div class="sub">cross-fade colors instead of swapping while dark</div></div>
+      <label class="toggle"><input type="checkbox" id="smooth"><span class="track"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Palette (max 8)</h2>
+    <div class="palette" id="pal"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="save">💾 SAVE</button>
+    <button class="btn ghost" id="run">▶ RUN</button>
+  </div>
+
+  <div style="margin-top:12px"><a class="back" href="/mode.html">← mode settings</a></div>
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  const MODE = 4;
+  let cfg = null, pal = null;
+
+  const $i = document.getElementById("interval");
+  $i.addEventListener("input", () => { document.getElementById("intervalV").textContent = $i.value; });
+
+  function collect() {
+    return {
+      name: "GLOW",
+      interval: +$i.value,
+      smooth_transitions: document.getElementById("smooth").checked,
+      breathing_effect: document.getElementById("breathing").checked,
+      colors: pal.get(),
+    };
+  }
+
+  document.getElementById("save").addEventListener("click", async () => {
+    try { await App.patchSettings({ ["MODE_" + MODE]: collect() }); App.toast("GLOW settings saved ✓"); }
+    catch (e) { App.toast(String(e.message || e), false); }
+  });
+  document.getElementById("run").addEventListener("click", async () => {
+    try {
+      await App.patchSettings({ ["MODE_" + MODE]: collect() });
+      await App.post("/api/mode", { mode: MODE });
+      App.toast("GLOW running");
+    } catch (e) { App.toast(String(e.message || e), false); }
+  });
+
+  (async () => {
+    try {
+      const s = await App.loadSettings();
+      cfg = s["MODE_" + MODE] || {};
+      $i.value = cfg.interval ?? 30;
+      document.getElementById("intervalV").textContent = $i.value;
+      document.getElementById("smooth").checked = !!cfg.smooth_transitions;
+      document.getElementById("breathing").checked = cfg.breathing_effect !== false;
+      pal = App.palette({
+        mount: document.getElementById("pal"),
+        colors: cfg.colors || [[255,0,0],[0,255,0],[0,0,255],[255,255,0]],
+        max: 8,
+        onChange: () => {},
+      });
+      document.getElementById("state").textContent = "editing GLOW (mode 4)";
+    } catch (e) {
+      document.getElementById("state").textContent = "device unreachable";
+      document.getElementById("state").style.color = "var(--danger)";
+    }
+  })();
+})();
+</script>
+</body>
+</html>

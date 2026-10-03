@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora — SPIRAL</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">AURORA</div>
+    <div class="tag">spiral settings</div>
+    <div class="state" id="state">loading…</div>
+  </header>
+
+  <div class="card">
+    <h2>Motion</h2>
+    <div class="row">
+      <div><div class="label">Frame speed</div><div class="sub">ms per rotation step (100–5000)</div></div>
+      <input type="range" id="speed" min="100" max="5000" step="100" value="1000">
+      <div class="value" id="speedV">1000</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Brightness</div><div class="sub">0–100 %</div></div>
+      <input type="range" id="brightness" min="0" max="100" step="1" value="100">
+      <div class="value" id="brightnessV">100</div>
+    </div>
+    <div class="row">
+      <div><div class="label">Forward</div><div class="sub">off = reverse rotation</div></div>
+      <label class="toggle"><input type="checkbox" id="dir" checked><span class="track"></span></label>
+    </div>
+    <div class="row">
+      <div><div class="label">Paused</div><div class="sub">freeze on the current frame</div></div>
+      <label class="toggle"><input type="checkbox" id="paused"><span class="track"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Colors — exactly 4</h2>
+    <div class="palette" id="pal"></div>
+    <p class="hint">The four colors rotate through the corners frame by frame.</p>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="save">💾 SAVE</button>
+    <button class="btn ghost" id="run">▶ RUN</button>
+  </div>
+
+  <div style="margin-top:12px"><a class="back" href="/mode.html">← mode settings</a></div>
+  <footer>Aurora • ESP32-S3 • v2.0</footer>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(() => {
+  const MODE = 6;
+  let cfg = null, pal = null;
+
+  const link = (id, vid) => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", () => { document.getElementById(vid).textContent = el.value; });
+  };
+  link("speed", "speedV"); link("brightness", "brightnessV");
+
+  function collect() {
+    return {
+      name: "SPIRAL",
+      speed: +document.getElementById("speed").value,
+      direction: document.getElementById("dir").checked,
+      brightness: +document.getElementById("brightness").value,
+      paused: document.getElementById("paused").checked,
+      colors: pal.get(),
+    };
+  }
+
+  document.getElementById("save").addEventListener("click", async () => {
+    try { await App.patchSettings({ ["MODE_" + MODE]: collect() }); App.toast("SPIRAL settings saved ✓"); }
+    catch (e) { App.toast(String(e.message || e), false); }
+  });
+  document.getElementById("run").addEventListener("click", async () => {
+    try {
+      await App.patchSettings({ ["MODE_" + MODE]: collect() });
+      await App.post("/api/mode", { mode: MODE });
+      App.toast("SPIRAL running");
+    } catch (e) { App.toast(String(e.message || e), false); }
+  });
+
+  (async () => {
+    try {
+      const s = await App.loadSettings();
+      cfg = s["MODE_" + MODE] || {};
+      document.getElementById("speed").value = cfg.speed ?? 1000;
+      document.getElementById("speedV").textContent = document.getElementById("speed").value;
+      document.getElementById("brightness").value = cfg.brightness ?? 100;
+      document.getElementById("brightnessV").textContent = document.getElementById("brightness").value;
+      document.getElementById("dir").checked = cfg.direction !== false;
+      document.getElementById("paused").checked = !!cfg.paused;
+
+      // exactly 4 fixed slots — no add/remove
+      const four = (cfg.colors || [[255,0,0],[0,255,0],[0,0,255],[255,255,0]]).slice(0, 4);
+      while (four.length < 4) four.push([255, 255, 255]);
+      pal = App.palette({
+        mount: document.getElementById("pal"),
+        colors: four,
+        fixed: true,
+        onChange: () => {},
+      });
+      document.getElementById("state").textContent = "editing SPIRAL (mode 6)";
+    } catch (e) {
+      document.getElementById("state").textContent = "device unreachable";
+      document.getElementById("state").style.color = "var(--danger)";
+    }
+  })();
+})();
+</script>
+</body>
+</html>
