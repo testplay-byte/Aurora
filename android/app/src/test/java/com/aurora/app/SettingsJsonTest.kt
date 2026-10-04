@@ -171,7 +171,7 @@ class SettingsJsonTest {
     }
 
     @Test
-    fun `round trip state -> json -> state preserves values`() {
+    fun `round trip state to json to state preserves values`() {
         val original = ModeEditorState.Blink(interval = 333, noOff = true,
             colors = listOf(Rgb(1, 2, 3), Rgb(4, 5, 6)))
         val parsed = ModeEditorState.fromJson(2, original.toJson().toString()) as ModeEditorState.Blink
