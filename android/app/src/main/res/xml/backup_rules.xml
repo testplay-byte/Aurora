@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Nothing sensitive to exclude: settings live on the device, BLE prefs are trivial -->
+</full-backup-content>
